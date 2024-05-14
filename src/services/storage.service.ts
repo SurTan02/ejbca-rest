@@ -1,9 +1,11 @@
 import { Storage } from "@google-cloud/storage";
-import { BUCKET_NAME } from "../config/env.config";
+import { BUCKET_NAME, GOOGLE_APPLICATION_CREDENTIALS } from "../config/env.config";
 
 
 // Creates a client
-const storage = new Storage();
+const storage = new Storage({
+  credentials: require(GOOGLE_APPLICATION_CREDENTIALS)
+});
 const bucketName = BUCKET_NAME;
 
 

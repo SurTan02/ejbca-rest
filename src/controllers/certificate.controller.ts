@@ -42,3 +42,13 @@ export const revokeCertificateController = async (req: Request, res: Response) =
   }
 };
 
+export const uploadController = async (req: Request, res: Response) => {
+  try {
+    uploadToStorage('test.txt', Buffer.from('HELLO TEXT'));
+    res.status(200).send("success");
+  }catch (error: any) {
+    const {message, error_code} = errorHandler(error);
+    res.status(error_code).send({ message: message });
+  }
+};
+
