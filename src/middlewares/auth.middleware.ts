@@ -1,19 +1,22 @@
 import { Request, Response, NextFunction } from "express";
-import { JwtPayload, verify } from "jsonwebtoken";
+import passport from "passport";
+import { authuser } from "../models/authuser.models";
 
 export const authenticateToken = (req: Request, res: Response, next: NextFunction) => {
-    const authHeader = req.headers["authorization"];
-    const token = authHeader && authHeader.split(" ")[1]; // Bearer TOKEN
+    passport.authenticate('oauth-bearer', {
+        session: false,
+    }, (err: { message: any; }, user: any, info: Express.AuthInfo | undefined) => {
+        if (err) {
+            return res.status(401).json({ error: err.message });
+        }
+        if (!user) {
+            return res.status(401).json({ error: 'Unauthorizedssss' });
+        }
 
-    if (!token) return res.sendStatus(401); // No token provided
-
-    try {
-        verify(token, process.env.JWT_SECRET!, (err, user) => {
-            if (err) return res.sendStatus(403);
-            req.user = user as JwtPayload;
-            next();
-        });
-    } catch (error) {
-        res.sendStatus(403); // Invalid token
-    }
+        if (info) {
+            // access token payload will be available in req.authInfo downstream
+            req.authuser = info as authuser;
+            return next();
+        }
+    })(req, res, next);
 };
