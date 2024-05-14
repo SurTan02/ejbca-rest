@@ -1,4 +1,4 @@
-import { HOSTNAME, PORT } from "./config/config";
+import { HOSTNAME, PORT } from "./config/env.config";
 import { createServer } from "./server";
 
 const hostname = HOSTNAME;
