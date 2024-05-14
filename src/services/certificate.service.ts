@@ -1,7 +1,8 @@
-import { axiosInstance } from "../config/axios";
-import { defaultUser, User } from "../models/certificate.model";
+import { axiosInstance } from "../config/axios.config";
+import { DEFAULT_CA_DN } from "../config/env.config";
+import { defaultUser, RevocationReason, User } from "../models/certificate.model";
 
-export const getKeysByServer = async (
+export const genKeysByServer = async (
   username: string, 
   passphrase: string,
   email: string,
@@ -15,6 +16,14 @@ export const getKeysByServer = async (
     }
     await editUser(user);
 
+    // Check if user have active certificate
+    const certificates = await getCertificates(username);
+    if (certificates?.certificates.length > 0){
+      certificates.certificates.forEach((cert: { serial_number: string; }) => {
+        revokeCertificate(cert.serial_number);
+      });
+    }
+
     console.log(`[LOG] Certificate + Key Generation for ${email}'s`);  
     const certificateResponse = await axiosInstance.post('/ejbca/ejbca-rest-api/v1/certificate/enrollkeystore', {
       username: username,
@@ -22,6 +31,8 @@ export const getKeysByServer = async (
       key_alg: 'RSA',
       key_spec: '2048',
     });
+
+    console.log(certificateResponse.data)
     const base64Data = certificateResponse.data.certificate;
     const binaryData = Buffer.from(base64Data, 'base64');
 
@@ -110,5 +121,19 @@ export const getCertificates = async (
   }
 };
 
-
+export const revokeCertificate = async (
+  cert_serial_number: string,
+  issuer_dn: string = DEFAULT_CA_DN,
+  revocation_reason: RevocationReason= RevocationReason.SUPERSEDED
+) => {
+  try {
+    console.log(`[LOG] Revoke certificate ${cert_serial_number}`);  
+    const certificateResponse = await axiosInstance.put(
+      `/ejbca/ejbca-rest-api/v1/certificate/${issuer_dn}/${cert_serial_number}/revoke?reason=${revocation_reason}`);
+    return certificateResponse.data;
+  }catch (error: any) {
+    console.warn(`[ERR] revokeCertificate: ${error?.response?.data}`);
+    throw error;
+  }
+};
 

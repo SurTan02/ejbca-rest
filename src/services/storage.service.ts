@@ -1,5 +1,5 @@
 import { Storage } from "@google-cloud/storage";
-import { BUCKET_NAME } from "../config/config";
+import { BUCKET_NAME } from "../config/env.config";
 
 
 // Creates a client
