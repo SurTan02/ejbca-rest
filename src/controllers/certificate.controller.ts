@@ -4,11 +4,22 @@ import { uploadToStorage } from "../services/storage.service";
 import { errorHandler } from "../config/axios.config";
 
 export const genKeysByServerController= async (req: Request, res: Response) => {
-  const { preferred_username, email, name, password } = req.body;
-  // const { preferred_username, name } = req.authuser;
-  // const email= preferred_username;
+  let preferred_username, name, email;
+  const { password } = req.body;
+
+  // FOR TESTING PURPOSE
+  if (req.authuser){
+    preferred_username = req.authuser.preferred_username;
+    name = req.authuser.preferred_username;
+    email = preferred_username;
+  } else{
+    preferred_username = req.body.username;
+    name = req.body.name;
+    email = preferred_username;
+  }
+  
   try {
-    const p12File: Buffer = await genKeysByServer(preferred_username, password, email, name);
+    const p12File: Buffer = await genKeysByServer(preferred_username!, password, email!, name!);
 
     // Save binary data to a .p12 file
     uploadToStorage(`${email}/${email}.p12`, p12File);
@@ -42,6 +53,7 @@ export const revokeCertificateController = async (req: Request, res: Response) =
   }
 };
 
+// for testing purpose
 export const uploadController = async (req: Request, res: Response) => {
   try {
     uploadToStorage('test.txt', Buffer.from('HELLO TEXT'));

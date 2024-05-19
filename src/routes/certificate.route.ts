@@ -12,7 +12,6 @@ router.post("/certificate", genKeysByServerController);
 router.post("/certificate/search", getCertificatesController);
 router.put("/certificate/revoke", revokeCertificateController);
 
-
-router.post("/test", uploadController)
+router.post("/test", uploadController);
 
 export { router as certificate };
