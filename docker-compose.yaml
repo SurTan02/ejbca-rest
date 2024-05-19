@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  ejbca:
+    hostname: surtan.me
+    image: keyfactor/ejbca-ce
+    ports:
+      - "8080:8080"
+      - "8443:8443"
+      - "8082:8082"
+      - "8081:8081"
+    env_file:
+      - .env
+    environment:
+      - TLS_SETUP_ENABLED=simple
+      - DATABASE_JDBC_URL=${EJBCA_DATABASE_JDBC_URL}
+      - DATABASE_USER=${EJBCA_DATABASE_USER}
+      - DATABASE_PASSWORD=${EJBCA_DATABASE_PASSWORD}
+      - PROXY_HTTP_BIND=0.0.0.0
+
+  ejbca-rest:
+    image: ejbca-rest
+    build:
+      context: .
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    volumes:
+      - ./local/ca.pem:${CA_FILE_DIRECTORY}
+      - ./local/key.json:${GOOGLE_APPLICATION_CREDENTIALS}
+      - ./local/pfx.p12:${PFX_FILE_DIRECTORY}
+    environment:
+      - TRUE_EJBCA_HOST=ejbca  # Update to use the service name of ejbca

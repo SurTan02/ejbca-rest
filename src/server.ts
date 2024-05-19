@@ -15,10 +15,7 @@ export const createServer = () => {
     .disable("x-powered-by")
     .use(morgan("dev"))
     .use(express.json())
-    .use(cors())
-    .get("/healthz", (req, res) => {
-      return res.json({ ok: true });
-    });
+    .use(cors());
   
   app.use("/api/v1", router);
   return app;
