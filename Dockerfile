@@ -16,7 +16,7 @@ FROM node:18-alpine AS production
 
 WORKDIR /app
 
-COPY package*.json .
+COPY package*.json ./
 
 RUN npm install --omit=dev
 
