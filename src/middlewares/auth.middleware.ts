@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import passport from "passport";
-import { authuser } from "../models/authuser.models";
+import { authuser } from "../models/authuser.model";
 
 export const authenticateToken = (req: Request, res: Response, next: NextFunction) => {
     passport.authenticate('oauth-bearer', {
@@ -10,7 +10,7 @@ export const authenticateToken = (req: Request, res: Response, next: NextFunctio
             return res.status(401).json({ error: err.message });
         }
         if (!user) {
-            return res.status(401).json({ error: 'Unauthorizedssss' });
+            return res.status(401).json({ error: 'Unauthorized' });
         }
 
         if (info) {

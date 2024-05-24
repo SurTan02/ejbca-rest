@@ -1,40 +1,41 @@
 import { type Request, type Response } from "express";
-import { getCertificates, genKeysByServer, revokeCertificate } from "../services/certificate.service";
+import { getCertificates, genKeysByServer, revokeCertificate, reqCertByCSR } from "../services/certificate.service";
 import { uploadToStorage } from "../services/storage.service";
 import { errorHandler } from "../config/axios.config";
+import { defaultUser, User } from "../models/user.model";
 
-export const genKeysByServerController= async (req: Request, res: Response) => {
-  let preferred_username, name, email;
-  const { password } = req.body;
-
-  // FOR TESTING PURPOSE
-  if (req.authuser){
-    preferred_username = req.authuser.preferred_username;
-    name = req.authuser.preferred_username;
-    email = preferred_username;
-  } else{
-    preferred_username = req.body.username;
-    name = req.body.name;
-    email = preferred_username;
-  }
+export const genKeysByServerController = async (req: Request, res: Response) => {
+  //  #swagger.tags=['certificate']
+  //  #swagger.parameters['body'] = {in: "body", schema: { $ref: "#/schemas/CertificateEnrollRequest" }}
+  const { preferred_username, name } = req.authuser;
+  const { passphrase }: { passphrase: string } = req.body;
   
   try {
-    const p12File: Buffer = await genKeysByServer(preferred_username!, password, email!, name!);
+    const user: User = {
+      ...defaultUser, passphrase,
+      username: preferred_username,
+      email: preferred_username,
+      cn: name
+    }
+
+    const p12File: Buffer = await genKeysByServer(user);
 
     // Save binary data to a .p12 file
-    uploadToStorage(`${email}/${email}.p12`, p12File);
+    uploadToStorage(`${preferred_username}/${preferred_username}.p12`, p12File);
 
-    res.status(200).send({'message': 'Certificate saved as certificate.p12'});
+    res.status(200).send({'message': `Certificate saved as ${preferred_username}/${preferred_username}.p12`});
   }catch (error: any) {
     const {message, error_code} = errorHandler(error);
     res.status(error_code).send({ message: message });
   }
 };
 
-export const getCertificatesController = async (req: Request, res: Response) => {
-  const { username } = req.body;
+export const getCertificatesController = async (req: Request<{},{},{}, { status: string}>, res: Response) => {
+  //  #swagger.tags=['certificate']
+  const { status } = req.query;
+  const { preferred_username } = req.authuser;
   try {
-    const body = await getCertificates(username);
+    const body = await getCertificates(preferred_username, status);
     res.status(200).send(body);
   }catch (error: any) {
     const {message, error_code} = errorHandler(error);
@@ -43,6 +44,8 @@ export const getCertificatesController = async (req: Request, res: Response) => 
 };
 
 export const revokeCertificateController = async (req: Request, res: Response) => {
+  //  #swagger.tags=['certificate']
+  //  #swagger.parameters['body'] = {in: "body", schema: { $ref: "#/schemas/CertificateRevokeRequest" }}
   const { serial_number, issuer_dn, revocation_reason } = req.body;
   try {
     const body = await revokeCertificate(serial_number, issuer_dn, revocation_reason);
@@ -53,14 +56,25 @@ export const revokeCertificateController = async (req: Request, res: Response) =
   }
 };
 
-// for testing purpose
-export const uploadController = async (req: Request, res: Response) => {
+export const reqCertByCSRController = async (req: Request, res: Response) => {
+  //  #swagger.tags=['certificate']
+  //  #swagger.parameters['body'] = {in: "body", schema: { $ref: "#/schemas/CertificateCSRRequest" }}
+  const { preferred_username } = req.authuser;
+  const { passphrase, csr }: { passphrase: string, csr:string } = req.body;
+  
   try {
-    uploadToStorage('test.txt', Buffer.from('HELLO TEXT'));
-    res.status(200).send("success");
+    const user: User = {
+      ...defaultUser, passphrase,
+      username: preferred_username,
+      email: preferred_username
+    }
+
+    const signCert: string = await reqCertByCSR(user, csr);
+    res.status(200).send({
+      'certificate': signCert,
+      'message': `Certificate creation success`});
   }catch (error: any) {
     const {message, error_code} = errorHandler(error);
     res.status(error_code).send({ message: message });
   }
 };
-

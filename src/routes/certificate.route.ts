@@ -3,15 +3,16 @@ import {
   getCertificatesController,
   genKeysByServerController,
   revokeCertificateController,
-  uploadController
+  reqCertByCSRController
 } from "../controllers/certificate.controller";
+import { authenticateToken } from "../middlewares/auth.middleware";
 
 const router = Router();
 
+router.use(authenticateToken);
+router.get("/certificate", getCertificatesController);
 router.post("/certificate", genKeysByServerController);
-router.post("/certificate/search", getCertificatesController);
+router.post("/certificate/csr", reqCertByCSRController);
 router.put("/certificate/revoke", revokeCertificateController);
-
-router.post("/test", uploadController);
 
 export { router as certificate };
