@@ -11,6 +11,12 @@ export const createServer = () => {
   
   app.use(passport.initialize());
   passport.use(bearerStrategy);
+
+  // Enable documentation
+  const swaggerUi = require('swagger-ui-express');
+  const swaggerDocument = require('../build/swagger.json');
+  app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+
   app
     .disable("x-powered-by")
     .use(morgan("dev"))

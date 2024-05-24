@@ -3,11 +3,13 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "build": "tsc",
+    "build": "npm run swag && tsc",
     "clean": "rm -rf dist",
+    "swag": "node utils/schemaGenerator.js && node -r esbuild-register ./utils/swagger.ts -e .ts",
     "dev": "nodemon --exec \"node -r esbuild-register ./src/index.ts\" -e .ts",
     "lint": "tsc --noEmit && eslint \"src/**/*.ts*\" --max-warnings 0",
-    "start": "node -r esbuild-register ./src/index.ts"
+    "start": "node -r esbuild-register ./src/index.ts",
+    "sdev": "npm run swag && npm run dev"
   },
   "dependencies": {
     "@google-cloud/storage": "^7.11.0",
@@ -19,7 +21,10 @@
     "morgan": "^1.10.0",
     "passport": "^0.7.0",
     "passport-azure-ad": "^4.3.5",
-    "ts-node": "^10.9.2"
+    "swagger-autogen": "^2.23.7",
+    "swagger-ui-express": "^5.0.0",
+    "ts-node": "^10.9.2",
+    "typescript-json-schema": "^0.63.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",

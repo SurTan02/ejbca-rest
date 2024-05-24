@@ -3,3 +3,4 @@ dist
 .env
 dump
 secrets
+build
