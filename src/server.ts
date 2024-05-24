@@ -4,6 +4,7 @@ import cors from "cors";
 import passport from "passport";
 import { router } from "./routes/routes";
 import { bearerStrategy } from "./config/auth.config";
+import path from "path";
 
 
 export const createServer = () => {
@@ -14,7 +15,7 @@ export const createServer = () => {
 
   // Enable documentation
   const swaggerUi = require('swagger-ui-express');
-  const swaggerDocument = require('../build/swagger.json');
+  const swaggerDocument = require(path.resolve('dist/swagger.json'));
   app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
   app

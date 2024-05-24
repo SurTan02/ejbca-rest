@@ -1,4 +1,4 @@
-import { _schema } from "../build/_schema";
+import { _schema } from "../dist/_schema";
 
 const swaggerAutogen = require('swagger-autogen')();
 
@@ -24,7 +24,7 @@ const doc = {
   ],
 };
 
-const outputFile = 'build/swagger.json';
+const outputFile = 'dist/swagger.json';
 const endpointsFiles = ['src/server.ts'];
 
 swaggerAutogen(outputFile, endpointsFiles, doc)
