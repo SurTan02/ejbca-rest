@@ -1,7 +1,9 @@
 import { axiosInstance } from "../config/axios.config";
 import { DEFAULT_CA_DN, DEFAULT_CERTIFICATE_PROFILE, DEFAULT_END_ENTITY_PROFILE } from "../config/env.config";
-import { RevocationReason } from "../models/certificate.model";
+import { pool } from "../databases/connection";
+import { getRevocationReasonNumber, getRevocationReasonString, RevocationReason } from "../models/certificate.model";
 import { User } from "../models/user.model";
+import { editUser } from "./user.service";
 
 export const genKeysByServer = async (user: User): Promise<Buffer> => {
   try {
@@ -9,12 +11,13 @@ export const genKeysByServer = async (user: User): Promise<Buffer> => {
     await editUser(user);
 
     // Check if user have active certificate
-    const certificates = await getCertificates(user.username);
-    if (certificates?.certificates.length > 0){
-      certificates.certificates.forEach((cert: { serial_number: string; }) => {
+    const certificates = await fetchCertificates(user.username, RevocationReason.NOT_REVOKED, true);
+    if (certificates?.length > 0){
+      certificates.forEach((cert: { serial_number: string; }) => {
         revokeCertificate(cert.serial_number);
       });
     }
+    console.log("<>>")
 
     console.log(`[LOG] Certificate + Key Generation for ${user.username}'s`);  
     const certificateResponse = await axiosInstance.post('/ejbca/ejbca-rest-api/v1/certificate/enrollkeystore', {
@@ -58,41 +61,68 @@ export const reqCertByCSR = async (user: User, csr: string): Promise<string> => 
   }
 };
 
-export const getCertificates = async (
+export const fetchCertificates = async (
   username: string, 
-  status: string | undefined = "CERT_ACTIVE"
+  revocation_reason: RevocationReason | undefined = undefined,
+  is_server_side: boolean = false //only get cert stored in server
 ) => {
   try {
-    console.log(`[LOG] Search ${username}'s certificate`);  
+    console.log(`[LOG] Search ${username}'s certificate with status ${revocation_reason}`);  
+    let query = `
+      SELECT subjectdn, serialnumber, revocationreason, certificaterequest
+      FROM certificatedata WHERE username = $1`;
+    const values = [username];
+  
+    // Check if revocation_reason is provided
+    if (revocation_reason !== undefined) {
+        query += ` AND revocationreason = $${values.length + 1}`;
+        values.push(getRevocationReasonNumber(revocation_reason));
+      }
+    if (is_server_side) {
+      query += ` AND certificaterequest is NULL`;
+    }
+    const { rows } = await pool.query(query, values);
+    const data: any = [];
+    rows.forEach((row: any) => {
+
+
+      data.push({
+        "subject_dn": row.subjectdn,
+        "serial_number": BigInt(row.serialnumber).toString(16),
+        "revocation_reason": getRevocationReasonString(row.revocationreason),
+        "is_server_side": row.certificaterequest? false : true,
+      })
+    });
+    return data;
+  }catch (error) {
+    console.error(`[ERR] fetchCertificates: ${error}`);
+    throw error;
+  }
+};
+
+export const getCertificate = async (serial_number: string) => {
+  try {
+    console.log(`[LOG] Search certificate with ${serial_number}`);  
     const certificateResponse = await axiosInstance.post('/ejbca/ejbca-rest-api/v1/certificate/search', {
-      "max_number_of_results": 10,
+      "max_number_of_results": 1,
       "criteria": [
         {
           "property": "QUERY",
-          "value": username,
-          "operation": "EQUAL"
-        },
-        {
-          "property": "STATUS",
-          "value": status,
+          "value": serial_number,
           "operation": "EQUAL"
         }
       ]
     });
 
-    const data: any = [];
-    certificateResponse.data.certificates.forEach((cert: any) => {
-      data.push({
-        "certificate": cert.certificate,
-        "serial_number": cert.serial_number})
-    });
-
-    return certificateResponse.data;
+    const decode = Buffer.from(certificateResponse.data.certificates[0].certificate, 'base64')
+    const certData = "-----BEGIN CERTIFICATE-----\n"+ decode.toString() + "\n-----END CERTIFICATE-----"
+    return certData;
   }catch (error) {
-    console.error(`[ERR] getCertificates: ${error}`);
+    console.error(`[ERR] getCertificate: ${error}`);
     throw error;
   }
 };
+
 
 export const revokeCertificate = async (
   cert_serial_number: string,
@@ -100,9 +130,10 @@ export const revokeCertificate = async (
   revocation_reason: RevocationReason= RevocationReason.SUPERSEDED
 ) => {
   try {
-    console.log(`[LOG] Revoke certificate ${cert_serial_number}`);  
+    console.log(`[LOG] Revoke certificate ${cert_serial_number}; reason ${revocation_reason}`);  
     const certificateResponse = await axiosInstance.put(
       `/ejbca/ejbca-rest-api/v1/certificate/${issuer_dn}/${cert_serial_number}/revoke?reason=${revocation_reason}`);
+    console.log(`[LOG] Successfully revoke certificate ${cert_serial_number}`);  
     return certificateResponse.data;
   }catch (error: any) {
     console.warn(`[ERR] revokeCertificate: ${error?.response?.data}`);
@@ -110,44 +141,3 @@ export const revokeCertificate = async (
   }
 };
 
-// Edit existing user, create new if not exist
-const editUser = async(editedUser: User) => {
-  try {
-    const soapRequest =
-    `<?xml version="1.0" encoding="utf-8"?>
-      <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ws="http://ws.protocol.core.ejbca.org/">
-        <soap:Header/>
-        <soap:Body>
-          <ws:editUser>
-            <arg0>
-              <username>${editedUser.username}</username>
-              <password>${editedUser.passphrase}</password>
-              <clearPwd>false</clearPwd>
-              <subjectDN>CN=${editedUser.cn},E=${editedUser.email}</subjectDN>
-              <caName>${editedUser.ca_name}</caName>
-              <email>${editedUser.email}</email>
-              =
-              <status>${editedUser.status}</status>
-              <tokenType>${editedUser.token_type}</tokenType>
-              <sendNotification>false</sendNotification>
-              <keyRecoverable>false</keyRecoverable>
-              <endEntityProfileName>${editedUser.end_entity_profile}</endEntityProfileName>
-              <certificateProfileName>${editedUser.cert_entity_profile}</certificateProfileName>
-            </arg0>
-          </ws:editUser>
-        </soap:Body>
-      </soap:Envelope>
-    `
-    await axiosInstance.post('/ejbca/ejbcaws/ejbcaws',
-      soapRequest,
-      {headers: {
-        'Content-Type': 'text/xml',
-        'SOAPAction': 'http://ws.protocol.core.ejbca.org/editUser'
-      }}
-    );
-  } catch (error) {
-    console.error(`[ERR] editUser: ${error}`);
-    throw new Error("Failed to update user status");
-  }
-  
-}

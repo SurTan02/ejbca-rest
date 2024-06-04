@@ -9,7 +9,7 @@ export const bearerStrategy = new BearerStrategy({
     validateIssuer: false,
     
     passReqToCallback: true,
-    loggingLevel: "info",
+    // loggingLevel: "info",
     loggingNoPII: true
   }, (req, token: ITokenPayload, done: Function) => {
       if (!token.hasOwnProperty('scp') && !token.hasOwnProperty('roles')) {

@@ -9,6 +9,7 @@ export const BUCKET_NAME= process.env.BUCKET_NAME || 'mybucket';
 export const EJBCA_ENDPOINT= process.env.EJBCA_ENDPOINT || 'localhost:8080';
 export const EJBCA_ADMIN_PASS= process.env.EJBCA_ADMIN_PASS || 'adminpass';
 
+export const EJBCA_DATABASE_PG_URL= process.env.EJBCA_DATABASE_PG_URL || 'db_host';
 
 export const DEFAULT_CA_DN=process.env.DEFAULT_CA_DN || 'CN=CloudCA,O=CloudITB,C=ID';
 export const DEFAULT_END_ENTITY_PROFILE=process.env.DEFAULT_END_ENTITY_PROFILE || 'Mahasiswa';
